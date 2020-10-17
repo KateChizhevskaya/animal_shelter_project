@@ -1,0 +1,217 @@
+from django.db import IntegrityError
+from rest_framework.serializers import ModelSerializer
+
+from django.contrib.auth import authenticate, login
+from rest_framework import serializers
+from animal_rent_api.apps.services.email_services.constants import REGISTRATION_HEADER, REGISTRATION_TEXT
+from animal_rent_api.apps.services.email_services.message_sender import EmailSender
+from animal_rent_api.apps.user.models import RentUser
+
+
+class UpdateUserSerializer(ModelSerializer):
+	repeated_new_password = serializers.CharField(
+		min_length=3,
+		max_length=100,
+		required=True,
+		allow_blank=False,
+		allow_null=False,
+		write_only=True
+	)
+	new_password = serializers.CharField(
+		min_length=3,
+		max_length=100,
+		required=True,
+		allow_blank=False,
+		allow_null=False,
+		write_only=True
+	)
+
+	class Meta:
+		model = RentUser
+		fields = [
+			'password',
+			'phone_number',
+			'new_password',
+			'repeated_new_password'
+		]
+		extra_kwargs = {
+			'phone_number': {'required': False},
+			'password': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': False,
+				'allow_blank': False,
+				'allow_null': False
+			},
+		}
+
+	def _validate_password_change(self, attrs):
+		new_password = attrs.get('new_password')
+		if new_password:
+			repeated_new_password = attrs.get('repeated_new_password')
+			old_password = attrs.get('password')
+			if repeated_new_password is None or old_password is None:
+				raise serializers.ValidationError(
+					'You have to provide old password and repeat new one'
+				)
+			if not self.instance.check_password(old_password):
+				raise serializers.ValidationError(
+					'You enter incorrect old password'
+				)
+			if repeated_new_password != new_password:
+				raise serializers.ValidationError(
+					'You passwords are different'
+				)
+			if new_password == old_password:
+				raise serializers.ValidationError(
+					'You old and new passwords are the same'
+				)
+			self.instance.set_password(new_password)
+			self.instance.save()
+			attrs.pop('new_password')
+			attrs.pop('password')
+			attrs.pop('repeated_new_password')
+
+	def validate(self, attrs):
+		self._validate_password_change(attrs)
+		return attrs
+
+
+class RegistrationSerializer(ModelSerializer):
+	repeated_password = serializers.CharField(
+		min_length=3,
+		max_length=100,
+		required=True,
+		allow_blank=False,
+		allow_null=False
+	)
+
+	class Meta:
+		model = RentUser
+		fields = [
+			'email',
+			'password',
+			'phone_number',
+			'first_name',
+			'last_name',
+			'repeated_password'
+		]
+		extra_kwargs = {
+			'role': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': False,
+			},
+			'phone_number': {'required': False},
+			'first_name': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			},
+			'last_name': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			},
+			'password': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			},
+			'email': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			},
+		}
+
+	def _validate_password(self, attrs):
+		password = attrs.get('password')
+		repeated_password = attrs.get('repeated_password')
+		if password != repeated_password:
+			raise serializers.ValidationError('Password and repeated password are not the same')
+
+	def validate(self, attrs):
+		if not attrs.get('username', None):
+			attrs['username'] = attrs.get('email')
+		self._validate_password(attrs)
+		return attrs
+
+	def save(self):
+		try:
+			user = RentUser.objects.create_user(
+				username=self.validated_data['username'],
+				email=self.validated_data['email'],
+				password=self.validated_data['password'],
+			)
+		except IntegrityError:
+			raise serializers.ValidationError('User with that email has already exists')
+		else:
+			user.first_name = self.validated_data['first_name']
+			user.last_name = self.validated_data['last_name']
+			user.phone_number = self.validated_data['phone_number']
+			user.save(update_fields=['first_name', 'last_name', 'phone_number'])
+			EmailSender.send_email(REGISTRATION_HEADER, REGISTRATION_TEXT, user)
+			return user
+
+
+class LoginSerializer(ModelSerializer):
+	class Meta:
+		model = RentUser
+		fields = [
+			'email',
+			'password',
+		]
+		extra_kwargs = {
+			'password': {
+				'min_length': 3,
+				'max_length': 100,
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			},
+			'email': {
+				'required': True,
+				'allow_blank': False,
+				'allow_null': False
+			}
+		}
+
+	def save(self):
+		user = authenticate(username=self.validated_data['email'], password=self.validated_data['password'])
+		if user:
+			login(request=self.context['view'].request, user=user)
+			if user.is_deleted:
+				raise serializers.ValidationError(
+					'The password is valid, but the account has been disabled!'
+				)
+		else:
+			raise serializers.ValidationError('The username or password were incorrect')
+		return user
+
+
+class UserListChangeStatusSerializer(ModelSerializer):
+	class Meta:
+		model = RentUser
+		fields = [
+			'id',
+			'email',
+			'is_deleted',
+		]
+		extra_kwargs = {
+			'id': {
+				'read_only': True
+			},
+			'email': {
+				'read_only': True
+			}
+		}
+
