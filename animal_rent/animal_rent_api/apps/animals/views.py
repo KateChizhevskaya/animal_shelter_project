@@ -25,9 +25,20 @@ class CreateAnimalView(generics.CreateAPIView):
 
 
 class GetAnimalInformationView(generics.RetrieveAPIView):
-	lookup_field = 'id'
 	serializer_class = RetrieveAnimalSerializer
-	queryset = Animal.objects.filter(blocked=False, owner__is_deleted=False)
+
+	def get_object(self):
+		return Animal.objects.raw(
+			f'''SELECT "apps_animal"."id", "apps_animal"."animal_type", "apps_animal"."breed",
+			"apps_animal"."height", "apps_animal"."weight", "apps_animal"."delivery_type",
+			"apps_animal"."rating", "apps_animal"."description", "apps_animal"."owner_id",
+			"apps_animal"."portfolio_id", "apps_animal"."price",
+			"apps_animal"."price_for_business",
+			"apps_animal"."animal_name" FROM "apps_animal" INNER JOIN "apps_rentuser" ON
+			("apps_animal"."owner_id" = "apps_rentuser"."id") INNER JOIN "apps_portfolio" ON
+			("apps_animal"."portfolio_id" = "apps_portfolio"."id") WHERE
+			("apps_animal"."blocked" = False AND "apps_rentuser"."is_deleted" = False AND apps_animal.id = {self.request.parser_context["kwargs"]["id"]})'''
+		)[0]
 
 
 class RemoveAnimalView(generics.DestroyAPIView):
@@ -35,8 +46,11 @@ class RemoveAnimalView(generics.DestroyAPIView):
 
 	def get_object(self):
 		try:
-			return Animal.objects.get(id=self.kwargs['id'], owner=self.request.user)
-		except Animal.DoesNotExist:
+			return Animal.objects.raw(
+				f'''SELECT * FROM "apps_animal" WHERE
+			("apps_animal"."owner_id" = {self.request.user.id} AND apps_animal.id = {self.request.parser_context["kwargs"]["id"]})'''
+			)[0]
+		except IndexError:
 			raise serializers.ValidationError(
 				'You can not delete that animal'
 			)

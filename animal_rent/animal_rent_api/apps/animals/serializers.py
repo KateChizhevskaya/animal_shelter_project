@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
@@ -14,7 +14,6 @@ from animal_rent_api.apps.user.services import get_admins
 
 
 class AnimalListSerializer(ModelSerializer):
-
 	class Meta:
 		model = Animal
 		fields = [
@@ -91,44 +90,66 @@ class AnimalCreateSerializer(ModelSerializer):
 		return attrs
 
 	def _create_animal(self, validated_data):
-		portfolio = Portfolio.objects.create(**validated_data.pop('portfolio'))
-		owner = self.context['request'].user
-		validated_data['owner'] = owner
-		try:
-			animal, is_created = Animal.objects.filter(blocked=True).get_or_create(
-				animal_type=validated_data['animal_type'],
-				breed=validated_data['breed'],
-				owner=validated_data['owner'],
-				animal_name=validated_data['animal_name'],
-				defaults=validated_data
+		with connection.cursor() as cursor:
+			portfolio = validated_data.pop('portfolio')
+			owner = self.context['request'].user
+			cursor.execute(
+				"INSERT INTO apps_portfolio (additional_description, awards, past_photo_places) VALUES ( %s, %s, %s ) returning id",
+				(portfolio["additional_description"], portfolio["awards"], portfolio["past_photo_places"],))
+			portfolio_id = cursor.fetchone()[0]
+			cursor.execute(
+				'''SELECT apps_animal.id FROM apps_animal WHERE
+				apps_animal.animal_type = %s AND
+				apps_animal.breed = %s AND
+				apps_animal.owner_id = %s AND
+				apps_animal.animal_name = %s''',
+				(
+					validated_data['animal_type'], validated_data['breed'], self.context['request'].user.id,
+					validated_data['animal_name']
+				)
 			)
-		except IntegrityError:
-			raise serializers.ValidationError(
-				'This animal already exists'
-			)
-		if not is_created:
-			animal.photos = validated_data.get('photos')
-			animal.description = validated_data.get('description')
-			animal.height = validated_data.get('height')
-			animal.weight = validated_data.get('weight')
-			animal.delivery_type = validated_data.get('delivery_type')
-			animal.price = validated_data.get('price')
-			animal.price_for_business = validated_data.get('price_for_business')
-			animal.portfolio = portfolio
-		animal.save()
-		return animal, owner
+			existed_animal = cursor.fetchone()
+			if existed_animal:
+				animal_id = existed_animal[0]
+				cursor.execute(
+					'''UPDATE apps_animal SET description = %s, 
+					portfolio_id = %s, height = %s, weight = %s,
+					delivery_type = %s, price = %s,
+					price_for_business = %s WHERE id = %s returning id''',
+					(
+						validated_data.get('description'), portfolio_id, validated_data.get('height'),
+						validated_data.get('weight'), validated_data.get('delivery_type'), validated_data.get('price'),
+						validated_data.get('price_for_business'), animal_id
+					)
+				)
+			else:
+				cursor.execute(
+					'''INSERT INTO apps_animal(animal_name, description, portfolio_id, animal_type, breed, height, weight,
+					delivery_type, price, price_for_business, rating, blocked, owner_id) VALUES (
+					%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id''',
+					(
+						validated_data.get('animal_name'), validated_data.get('description'), portfolio_id,
+						validated_data.get('animal_type'),
+						validated_data.get('breed'), validated_data.get('height'), validated_data.get('weight'),
+						validated_data.get('delivery_type'),
+						validated_data.get('price'), validated_data.get('price_for_business'), validated_data.get('rating', 0),
+						'true', owner.id
+					)
+				)
+				animal_id = cursor.fetchone()[0]
+		return animal_id, owner.id
 
 	def _create_request(self, animal, owner):
 		request_serialiazer = CreateAddAnimalForRentRequestSerializer(data={
-			'lessor': owner.id,
-			'animal': animal.id
+			'lessor': owner,
+			'animal': animal
 		})
 		try:
 			request_serialiazer.is_valid(raise_exception=True)
 		except Exception:
 			raise serializers.ValidationError(
-					'Can not create request'
-				)
+				'Can not create request'
+			)
 		request_serialiazer.save()
 		admins = get_admins()
 		EmailSender.send_mails_to_many_users(header=ADD_ANIMAL_HEADER, text=ADD_ANIMAL_TEXT, users=admins)
