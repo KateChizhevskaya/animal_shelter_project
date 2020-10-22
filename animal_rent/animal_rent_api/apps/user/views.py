@@ -1,3 +1,4 @@
+from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions
 
@@ -19,12 +20,15 @@ class UpdateUser(generics.UpdateAPIView):
 	permission_classes = (permissions.IsAuthenticated, )
 
 	def get_object(self):
-		return RentUser.objects.raw(
-			f'''
-				SELECT "apps_rentuser"."id", "apps_rentuser"."password","apps_rentuser"."phone_number"
-				FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.user.id} AND "apps_rentuser"."is_deleted" = False)
-			'''
-		)[0]
+		try:
+			return RentUser.objects.raw(
+				f'''
+					SELECT "apps_rentuser"."id", "apps_rentuser"."password","apps_rentuser"."phone_number"
+					FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.user.id} AND "apps_rentuser"."is_deleted" = False)
+				'''
+			)[0]
+		except IndexError:
+			raise Http404
 
 
 class UserListView(generics.ListAPIView):
@@ -42,9 +46,12 @@ class ChangeUserBlockedStatusView(generics.UpdateAPIView):
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
 
 	def get_object(self):
-		return RentUser.objects.raw(
-			f'''
-						SELECT "apps_rentuser"."id", "apps_rentuser"."is_deleted"
-						FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.parser_context["kwargs"]["id"]})
-					'''
-		)[0]
+		try:
+			return RentUser.objects.raw(
+				f'''
+							SELECT "apps_rentuser"."id", "apps_rentuser"."is_deleted"
+							FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.parser_context["kwargs"]["id"]})
+						'''
+			)[0]
+		except IndexError:
+			raise Http404

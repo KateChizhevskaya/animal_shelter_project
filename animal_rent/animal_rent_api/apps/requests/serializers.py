@@ -1,3 +1,4 @@
+from django.db import connection
 from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
@@ -68,8 +69,13 @@ class AnswerAddAnimalForRentRequestSerializer(ModelSerializer):
 		}
 
 	def unlock_animal(self, animal):
-		animal.blocked = False
-		animal.save(update_fields=['blocked'])
+		with connection.cursor() as cursor:
+			cursor.execute(
+				'''UPDATE apps_animal SET blocked = %s WHERE id = %s ''',
+				(
+					False, animal.id
+				)
+			)
 
 	def send_email(self, text, user):
 		EmailSender.send_email(header=ANSWER_REQUEST_HEADER, text=text, user=user)
@@ -133,19 +139,6 @@ class CreateRentAnimalRequestSerializer(ModelSerializer):
 		}
 
 	def _validate_time_period(self, date_time_of_rent_begin, date_time_of_rent_end, animal):
-		if RentRequest.objects.filter(
-				Q(animal=animal) & Q(status=Statuses.APPROVED) &
-				Q(date_time_of_rent_begin__lte=date_time_of_rent_end) & Q(
-					date_time_of_rent_begin__gte=date_time_of_rent_begin) |
-				Q(date_time_of_rent_end__gte=date_time_of_rent_begin) & Q(
-					date_time_of_rent_end__lte=date_time_of_rent_end) |
-				Q(date_time_of_rent_begin__gte=date_time_of_rent_begin) & Q(
-					date_time_of_rent_end__lte=date_time_of_rent_end)
-		).exists():
-			raise serializers.ValidationError(
-				'This time period is not available for renting'
-			)
-
 		if date_time_of_rent_begin + MAXiMUM_PERIOD_OF_ANIMAL_KEEPIND < date_time_of_rent_end:
 			raise serializers.ValidationError(
 				'You can not take animal for more than 6 hours'
@@ -192,12 +185,8 @@ class AnswerForRentRequestSerializer(ModelSerializer):
 		validated_data = self.validated_data
 		status = validated_data.get('status')
 		if status in {Statuses.APPROVED, Statuses.REJECTED}:
-			instance = super(AnswerForRentRequestSerializer, self).save()
-			self.send_email(DEFAULT_MAIL_MESSAGES_FOR_ANSWER_REQUESTS[status], instance.renter)
+			super(AnswerForRentRequestSerializer, self).save()
 		else:
 			raise serializers.ValidationError(
 				'Can not react this way'
 			)
-
-	def send_email(self, text, user):
-		EmailSender.send_email(header=ANSWER_REQUEST_HEADER, text=text, user=user)

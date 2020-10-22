@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Statuses(models.TextChoices):
-	IN_PROCESS = 'in process', _('In process')
+	IN_PROCESS = 'in_process', _('In process')
 	APPROVED = 'approved', _('Approved')
 	REJECTED = 'rejected', _('Rejected')
 

@@ -1,7 +1,7 @@
+from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions
 
-from animal_rent_api.apps.requests.constants import Statuses
 from animal_rent_api.apps.requests.models import AddAnimalForRentRequest, RentRequest
 from animal_rent_api.apps.requests.serializers import AnswerAddAnimalForRentRequestSerializer, \
 	CreateRentAnimalRequestSerializer, AnswerForRentRequestSerializer, RentRequestViewSerializer, \
@@ -9,35 +9,57 @@ from animal_rent_api.apps.requests.serializers import AnswerAddAnimalForRentRequ
 
 
 class AddAnimalForRentAnswerView(generics.UpdateAPIView):
-	lookup_field = 'id'
 	serializer_class = AnswerAddAnimalForRentRequestSerializer
-	queryset = AddAnimalForRentRequest.objects.filter(status=Statuses.IN_PROCESS)
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
+
+	def get_object(self):
+		try:
+			return AddAnimalForRentRequest.objects.raw(
+					f'''SELECT apps_addanimalforrentrequest.id FROM apps_addanimalforrentrequest WHERE
+				(apps_addanimalforrentrequest.id = {self.request.parser_context["kwargs"]["id"]})'''
+				)[0]
+		except IndexError:
+			raise Http404
 
 
 class AddAnimalForRentListView(generics.ListAPIView):
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
 	serializer_class = AddAnimalForRentRequestViewSerializer
-	filter_backends = [DjangoFilterBackend, ]
-	filterset_fields = ['status', ]
-	queryset = AddAnimalForRentRequest.objects.all()
+	queryset = AddAnimalForRentRequest.objects.raw(
+				f'''SELECT * FROM apps_addanimalforrentrequest'''
+			)
 
 
 class AddAnimalForRentRetrieveView(generics.RetrieveAPIView):
 	serializer_class = AddAnimalForRentRequestViewSerializer
-	filter_backends = [DjangoFilterBackend, ]
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
-	lookup_field = 'id'
-	queryset = AddAnimalForRentRequest.objects.all()
+
+	def get_object(self):
+		try:
+			return AddAnimalForRentRequest.objects.raw(
+					f'''SELECT apps_addanimalforrentrequest.id FROM apps_addanimalforrentrequest WHERE
+				(apps_addanimalforrentrequest.id = {self.request.parser_context["kwargs"]["id"]})'''
+				)[0]
+		except IndexError:
+			raise Http404
 
 
 class RentRequestAnswerView(generics.UpdateAPIView):
-	lookup_field = 'id'
 	serializer_class = AnswerForRentRequestSerializer
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
 
-	def get_queryset(self):
-		return RentRequest.objects.filter(status=Statuses.IN_PROCESS, animal__owner=self.request.user)
+	def get_object(self):
+		try:
+			return RentRequest.objects.raw(
+				f'''SELECT "apps_rentrequest"."id", "apps_rentrequest"."animal_id", "apps_rentrequest"."renter_id", 
+				"apps_rentrequest"."date_of_creating_request", "apps_rentrequest"."date_time_of_rent_begin",
+				"apps_rentrequest"."date_time_of_rent_end", "apps_rentrequest"."status", "apps_rentrequest"."renter_text_comment",
+				"apps_rentrequest"."phone_number" FROM "apps_rentrequest" INNER JOIN "apps_animal" 
+				ON ("apps_rentrequest"."animal_id" = "apps_animal"."id") WHERE
+				("apps_animal"."owner_id" = {self.request.user.id} AND "apps_rentrequest"."id" = {self.request.parser_context["kwargs"]["id"]})'''
+			)[0]
+		except IndexError:
+			raise Http404
 
 
 class RentRequestCreateView(generics.CreateAPIView):
@@ -47,20 +69,29 @@ class RentRequestCreateView(generics.CreateAPIView):
 
 class RentRequestListView(generics.ListAPIView):
 	serializer_class = RentRequestViewSerializer
-	filter_backends = [DjangoFilterBackend, ]
-	filterset_fields = ['status', ]
 	permission_classes = (permissions.IsAuthenticated, )
 
 	def get_queryset(self):
-		return RentRequest.objects.filter(animal__owner=self.request.user)
+		return RentRequest.objects.raw(
+			f'''SELECT "apps_rentrequest"."id", "apps_rentrequest"."animal_id", "apps_rentrequest"."renter_id", 
+			"apps_rentrequest"."date_of_creating_request", "apps_rentrequest"."date_time_of_rent_begin",
+			"apps_rentrequest"."date_time_of_rent_end", "apps_rentrequest"."status", "apps_rentrequest"."renter_text_comment",
+			"apps_rentrequest"."phone_number" FROM "apps_rentrequest" INNER JOIN "apps_animal" 
+			ON ("apps_rentrequest"."animal_id" = "apps_animal"."id") WHERE
+			("apps_animal"."owner_id" = {self.request.user.id})'''
+		)
 
 
 class RentRequestRetrieveView(generics.RetrieveAPIView):
 	serializer_class = RentRequestViewSerializer
-	filter_backends = [DjangoFilterBackend, ]
-	filterset_fields = ['status', ]
 	permission_classes = (permissions.IsAuthenticated, )
-	lookup_field = 'id'
 
-	def get_queryset(self):
-		return RentRequest.objects.filter(animal__owner=self.request.user)
+	def get_object(self):
+		try:
+			return RentRequest.objects.raw(
+				f'''SELECT * FROM "apps_rentrequest" INNER JOIN "apps_animal" 
+						ON ("apps_rentrequest"."animal_id" = "apps_animal"."id") WHERE
+						("apps_animal"."owner_id" = {self.request.user.id} AND "apps_rentrequest"."id" = {self.request.parser_context["kwargs"]["id"]})'''
+			)[0]
+		except IndexError:
+			raise Http404
