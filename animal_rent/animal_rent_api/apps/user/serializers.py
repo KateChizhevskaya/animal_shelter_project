@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import connection
 from rest_framework.serializers import ModelSerializer
 
 from django.contrib.auth import authenticate, login
@@ -145,21 +145,37 @@ class RegistrationSerializer(ModelSerializer):
 		self._validate_password(attrs)
 		return attrs
 
+	def _get_existed_user(self, email):
+		with connection.cursor() as cursor:
+			cursor.execute(
+				'''SELECT apps_rentuser.id FROM apps_rentuser WHERE
+				apps_rentuser.email = %s''',
+				(
+					email,
+				)
+			)
+			return cursor.fetchone()
+
 	def save(self):
-		try:
-			user = RentUser.objects.create_user(
+		with connection.cursor() as cursor:
+			existed_user = self._get_existed_user(self.validated_data['email'])
+			if existed_user:
+				raise serializers.ValidationError('That user already exists')
+			RentUser.objects.create_user(
 				username=self.validated_data['username'],
 				email=self.validated_data['email'],
 				password=self.validated_data['password'],
 			)
-		except IntegrityError:
-			raise serializers.ValidationError('User with that email has already exists')
-		else:
-			user.first_name = self.validated_data['first_name']
-			user.last_name = self.validated_data['last_name']
-			user.phone_number = self.validated_data['phone_number']
-			user.save(update_fields=['first_name', 'last_name', 'phone_number'])
-			EmailSender.send_email(REGISTRATION_HEADER, REGISTRATION_TEXT, user)
+			existed_user = self._get_existed_user(self.validated_data['email'])
+			cursor.execute(
+					'''UPDATE apps_rentuser SET first_name = %s, last_name = %s, phone_number = %s WHERE id = %s returning *''',
+					(
+						self.validated_data['first_name'], self.validated_data['last_name'],
+						self.validated_data['phone_number'], existed_user
+					)
+				)
+			user = cursor.fetchone()
+			EmailSender.send_email(REGISTRATION_HEADER, REGISTRATION_TEXT, {'email': user[4]})
 			return user
 
 

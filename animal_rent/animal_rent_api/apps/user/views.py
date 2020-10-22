@@ -19,19 +19,32 @@ class UpdateUser(generics.UpdateAPIView):
 	permission_classes = (permissions.IsAuthenticated, )
 
 	def get_object(self):
-		return RentUser.objects.get(is_deleted=False, id=self.request.user.id)
+		return RentUser.objects.raw(
+			f'''
+				SELECT "apps_rentuser"."id", "apps_rentuser"."password","apps_rentuser"."phone_number"
+				FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.user.id} AND "apps_rentuser"."is_deleted" = False)
+			'''
+		)[0]
 
 
 class UserListView(generics.ListAPIView):
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
-	queryset = RentUser.objects.all()
+	queryset = RentUser.objects.raw(
+		f'''
+			SELECT "apps_rentuser"."id", "apps_rentuser"."email","apps_rentuser"."is_deleted" FROM "apps_rentuser"
+		'''
+	)
 	serializer_class = UserListChangeStatusSerializer
 
 
 class ChangeUserBlockedStatusView(generics.UpdateAPIView):
 	serializer_class = UserListChangeStatusSerializer
-	lookup_field = 'id'
-	filter_backends = [DjangoFilterBackend, ]
-	filterset_fields = ['is_deleted', ]
-	queryset = RentUser.objects.all()
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
+
+	def get_object(self):
+		return RentUser.objects.raw(
+			f'''
+						SELECT "apps_rentuser"."id", "apps_rentuser"."is_deleted"
+						FROM "apps_rentuser" WHERE ("apps_rentuser"."id" = {self.request.parser_context["kwargs"]["id"]})
+					'''
+		)[0]
