@@ -1,5 +1,6 @@
 import datetime
 
+from dateutil.relativedelta import relativedelta
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -23,3 +24,6 @@ MAXiMUM_PERIOD_OF_ANIMAL_KEEPIND = datetime.timedelta(hours=6)
 RENT_REQUEST_HEADER = 'You have new rent request'
 
 RENT_REQUEST_TEXT = 'Please, react to new rent request'
+
+PERIOD_FOR_TESTS = relativedelta(hours=5)
+INCORRECT_PERIOD_FOR_TESTS = relativedelta(hours=7)

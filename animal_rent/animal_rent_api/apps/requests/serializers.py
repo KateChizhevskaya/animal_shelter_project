@@ -122,9 +122,9 @@ class CreateRentAnimalRequestSerializer(ModelSerializer):
 				'allow_null': True
 			},
 			'phone_number': {
-				'required': True,
+				'required': False,
 				'allow_blank': False,
-				'allow_null': False
+				'allow_null': True
 			},
 			'date_time_of_rent_begin': {
 				'required': True,
