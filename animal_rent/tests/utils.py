@@ -8,33 +8,32 @@ from rest_framework.test import APIRequestFactory, force_authenticate, APIClient
 from animal_rent_api.apps.user.models import RentUser
 
 
-def get_response(user: RentUser, url: AnyStr, data: Dict = None) -> Response:
-	rest_request_factory = APIRequestFactory()
-	request = rest_request_factory.get(url, data=data, format='json')
-	force_authenticate(request, user)
-	view, _, _ = resolve(url)
-	response = view(request)
-	return response
-
-
-def post_data(user, url, data=None):
-	rest_request_factory = APIRequestFactory()
-	request = rest_request_factory.post(url, data=data, format='json')
-	force_authenticate(request, user)
-	view, _, _ = resolve(url)
-	response = view(request)
-	return response
-
-
-def put_data(user, url, data=None, request_format='json'):
+def prepare_request(user: RentUser, url: AnyStr, **kwargs):
 	rest_request_factory = APIClient()
 	rest_request_factory.force_authenticate(user)
-	response = rest_request_factory.put(url, data=data, format=request_format)
-	return response
+	return rest_reverse.reverse(url, kwargs=kwargs), rest_request_factory
 
 
-def patch_data(user, url, data=None):
-	rest_request_factory = APIClient()
-	rest_request_factory.force_authenticate(user)
-	response = rest_request_factory.patch(url, data=data, format='json')
-	return response
+def get_response(user: RentUser, url: AnyStr, data: Dict = None, **kwargs) -> Response:
+	url, rest_request_factory = prepare_request(user, url, **kwargs)
+	return rest_request_factory.get(url, data=data)
+
+
+def del_response(user: RentUser, url: AnyStr, data: Dict = None, **kwargs) -> Response:
+	url, rest_request_factory = prepare_request(user, url, **kwargs)
+	return rest_request_factory.delete(url, data=data)
+
+
+def post_data(user, url, data=None, **kwargs):
+	url, rest_request_factory = prepare_request(user, url, **kwargs)
+	return rest_request_factory.post(url, data=data)
+
+
+def put_data(user, url, data=None, **kwargs):
+	url, rest_request_factory = prepare_request(user, url, **kwargs)
+	return rest_request_factory.put(url, data=data)
+
+
+def patch_data(user, url, data=None, **kwargs):
+	url, rest_request_factory = prepare_request(user, url, **kwargs)
+	return rest_request_factory.patch(url, data=data)

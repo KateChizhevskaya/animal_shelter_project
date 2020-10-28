@@ -4,6 +4,7 @@ import factory
 
 class UserFactory(factory.django.DjangoModelFactory):
 	email = factory.Faker('email')
+	username = factory.Faker('email')
 	password = factory.PostGenerationMethodCall('set_password', 'kate_user')
 	first_name = factory.Faker('first_name')
 	last_name = factory.Faker('last_name')
@@ -13,7 +14,3 @@ class UserFactory(factory.django.DjangoModelFactory):
 
 	class Meta:
 		model = RentUser
-
-
-class AdminUserFactory(UserFactory):
-	is_staff = True

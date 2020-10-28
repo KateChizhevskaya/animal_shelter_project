@@ -1,8 +1,8 @@
 import factory
 
+from animal_rent_api.apps.additional_documents.factories import PortfolioFactory
 from animal_rent_api.apps.animals.constants import AnimalType, DeliveryType
 from animal_rent_api.apps.animals.models import Animal
-from animal_rent_api.apps.user.factories import UserFactory
 
 
 class AnimalFactory(factory.django.DjangoModelFactory):
@@ -19,7 +19,7 @@ class AnimalFactory(factory.django.DjangoModelFactory):
 		'random_int', min=1, max=4
 	)
 	description = factory.Faker('pystr', max_chars=20)
-	portfolio = None
+	portfolio = factory.SubFactory(PortfolioFactory)
 	price = factory.Faker(
 		'random_int', min=11, max=170
 	)
