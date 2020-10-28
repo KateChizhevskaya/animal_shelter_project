@@ -171,7 +171,7 @@ class RegistrationSerializer(ModelSerializer):
 					'''UPDATE apps_rentuser SET first_name = %s, last_name = %s, phone_number = %s WHERE id = %s returning *''',
 					(
 						self.validated_data['first_name'], self.validated_data['last_name'],
-						self.validated_data['phone_number'], existed_user
+						self.validated_data.get('phone_number'), existed_user
 					)
 				)
 			user = cursor.fetchone()

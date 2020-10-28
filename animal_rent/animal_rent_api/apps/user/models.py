@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
-from django.db.models import BooleanField, OneToOneField, CASCADE
+from django.db.models import BooleanField
+
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from animal_rent_api.apps.user.constants import UserRoleEnum
