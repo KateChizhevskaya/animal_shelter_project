@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'phone_field',
     'django_filters',
-    'phonenumber_field'
+    'phonenumber_field',
 ]
 
 REST_FRAMEWORK = {
@@ -140,7 +140,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static additional_documents (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/

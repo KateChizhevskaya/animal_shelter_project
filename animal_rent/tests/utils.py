@@ -25,6 +25,11 @@ def del_response(user: RentUser, url: AnyStr, data: Dict = None, **kwargs) -> Re
 
 
 def post_data(user, url, data=None, **kwargs):
+	if kwargs.get('format'):
+		format = kwargs.get('format')
+		kwargs.pop('format')
+		url, rest_request_factory = prepare_request(user, url, **kwargs)
+		return rest_request_factory.post(url, data=data, format=format)
 	url, rest_request_factory = prepare_request(user, url, **kwargs)
 	return rest_request_factory.post(url, data=data)
 
