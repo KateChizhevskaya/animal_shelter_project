@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login
 from rest_framework import serializers
 from animal_rent_api.apps.services.email_services.constants import REGISTRATION_HEADER, REGISTRATION_TEXT
 from animal_rent_api.apps.services.email_services.message_sender import EmailSender
+from animal_rent_api.apps.user.constants import UserRoleEnum
 from animal_rent_api.apps.user.models import RentUser
 
 
@@ -94,12 +95,11 @@ class RegistrationSerializer(ModelSerializer):
 			'phone_number',
 			'first_name',
 			'last_name',
-			'repeated_password'
+			'repeated_password',
+			'role',
 		]
 		extra_kwargs = {
 			'role': {
-				'min_length': 3,
-				'max_length': 100,
 				'required': False,
 			},
 			'phone_number': {'required': False},
@@ -167,11 +167,15 @@ class RegistrationSerializer(ModelSerializer):
 				password=self.validated_data['password'],
 			)
 			existed_user = self._get_existed_user(self.validated_data['email'])
+			if self.validated_data.get('role'):
+				role = self.validated_data.get('role')
+			else:
+				role = UserRoleEnum.INDIVIDUAL
 			cursor.execute(
-					'''UPDATE apps_rentuser SET first_name = %s, last_name = %s, phone_number = %s WHERE id = %s returning *''',
+					'''UPDATE apps_rentuser SET first_name = %s, last_name = %s, phone_number = %s, role = %s WHERE id = %s returning *''',
 					(
 						self.validated_data['first_name'], self.validated_data['last_name'],
-						self.validated_data.get('phone_number'), existed_user
+						self.validated_data.get('phone_number'), role, existed_user
 					)
 				)
 			user = cursor.fetchone()
