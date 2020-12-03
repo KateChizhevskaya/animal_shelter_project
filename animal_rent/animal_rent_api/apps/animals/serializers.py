@@ -160,6 +160,7 @@ class AnimalCreateSerializer(ModelSerializer):
 		self._create_request(animal, owner)
 
 
+
 class RetrieveAnimalSerializer(ModelSerializer):
 	portfolio = PortfolioSerializer(read_only=True)
 	reviews = ReviewShowSerializer(read_only=True, many=True)
