@@ -48,16 +48,16 @@ class UpdateUserSerializer(ModelSerializer):
 
 	def _validate_password_change(self, attrs):
 		new_password = attrs.get('new_password')
+		old_password = attrs.get('password')
+		if not self.instance.check_password(old_password):
+			raise serializers.ValidationError(
+				'You enter incorrect old password'
+			)
 		if new_password:
-			repeated_new_password = attrs.get('repeated_new_password')
-			old_password = attrs.get('password')
+			repeated_new_password = attrs.get('r=1epeated_new_password')
 			if repeated_new_password is None or old_password is None:
 				raise serializers.ValidationError(
 					'You have to provide old password and repeat new one'
-				)
-			if not self.instance.check_password(old_password):
-				raise serializers.ValidationError(
-					'You enter incorrect old password'
 				)
 			if repeated_new_password != new_password:
 				raise serializers.ValidationError(
@@ -72,6 +72,8 @@ class UpdateUserSerializer(ModelSerializer):
 			attrs.pop('new_password')
 			attrs.pop('password')
 			attrs.pop('repeated_new_password')
+		else:
+			attrs.pop('password')
 
 	def validate(self, attrs):
 		self._validate_password_change(attrs)

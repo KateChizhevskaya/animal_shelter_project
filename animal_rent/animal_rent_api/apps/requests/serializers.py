@@ -1,5 +1,5 @@
 from django.db import connection
-from django.db.models import Q
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
@@ -139,10 +139,13 @@ class CreateRentAnimalRequestSerializer(ModelSerializer):
 		}
 
 	def _validate_time_period(self, date_time_of_rent_begin, date_time_of_rent_end, animal):
-		if date_time_of_rent_begin + MAXiMUM_PERIOD_OF_ANIMAL_KEEPIND < date_time_of_rent_end:
+		if date_time_of_rent_begin + MAXiMUM_PERIOD_OF_ANIMAL_KEEPIND < date_time_of_rent_end or \
+				date_time_of_rent_end < date_time_of_rent_begin or \
+				date_time_of_rent_begin < timezone.now():
 			raise serializers.ValidationError(
-				'You can not take animal for more than 6 hours'
+				'You can not take animal for that period of time'
 			)
+
 
 	def _validate_animal(self, animal):
 		if animal.blocked:

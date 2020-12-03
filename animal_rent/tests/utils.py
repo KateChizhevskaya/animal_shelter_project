@@ -1,6 +1,5 @@
 from typing import AnyStr, Dict
 
-from django.urls import resolve
 from rest_framework import reverse as rest_reverse
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate, APIClient

@@ -35,7 +35,7 @@ class UserListView(generics.ListAPIView):
 	permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
 	queryset = RentUser.objects.raw(
 		f'''
-			SELECT "apps_rentuser"."id", "apps_rentuser"."email","apps_rentuser"."is_deleted" FROM "apps_rentuser"
+			SELECT * FROM "apps_rentuser"
 		'''
 	)
 	serializer_class = UserListChangeStatusSerializer

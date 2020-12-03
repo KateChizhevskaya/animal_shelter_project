@@ -8,16 +8,39 @@ from animal_rent_api.apps.animals.serializers import AnimalListSerializer, Anima
 
 class AnimalsListView(generics.ListAPIView):
 	serializer_class = AnimalListSerializer
-	queryset = Animal.objects.raw(
-		'SELECT "apps_animal"."id", "apps_animal"."animal_type", "apps_animal"."breed",'
-		' "apps_animal"."height", "apps_animal"."weight", "apps_animal"."delivery_type", '
-		'"apps_animal"."rating", "apps_animal"."description", "apps_animal"."owner_id", '
-		'"apps_animal"."portfolio_id", "apps_animal"."price", '
-		'"apps_animal"."price_for_business",'
-		' "apps_animal"."animal_name" FROM "apps_animal" INNER JOIN "apps_rentuser" ON '
-		'("apps_animal"."owner_id" = "apps_rentuser"."id") WHERE '
-		'("apps_animal"."blocked" = False AND "apps_rentuser"."is_deleted" = False)'
-	)
+
+	def get_queryset(self):
+		return Animal.objects.raw(
+			'SELECT "apps_animal"."id", "apps_animal"."animal_type", "apps_animal"."breed",'
+			' "apps_animal"."height", "apps_animal"."weight", "apps_animal"."delivery_type", '
+			'"apps_animal"."rating", "apps_animal"."description", "apps_animal"."owner_id", '
+			'"apps_animal"."portfolio_id", "apps_animal"."price", '
+			'"apps_animal"."price_for_business",'
+			' "apps_animal"."animal_name" FROM "apps_animal" INNER JOIN "apps_rentuser" ON '
+			'("apps_animal"."owner_id" = "apps_rentuser"."id") WHERE '
+			'("apps_animal"."blocked" = False AND "apps_rentuser"."is_deleted" = False)'
+		)
+
+
+class MyAnimalsListView(generics.ListAPIView):
+	serializer_class = AnimalListSerializer
+	permission_classes = (permissions.IsAuthenticated,)
+
+	def get_queryset(self):
+		return Animal.objects.raw(
+			f'''SELECT "apps_animal"."id", "apps_animal"."animal_type", "apps_animal"."breed",
+			"apps_animal"."height", "apps_animal"."weight", "apps_animal"."delivery_type",
+			"apps_animal"."rating", "apps_animal"."description", "apps_animal"."owner_id",
+			"apps_animal"."portfolio_id", "apps_animal"."price",
+			"apps_animal"."price_for_business",
+			"apps_animal"."animal_name" FROM "apps_animal" INNER JOIN "apps_rentuser" ON
+			("apps_animal"."owner_id" = "apps_rentuser"."id") WHERE 
+			(
+			"apps_animal"."blocked" = False AND 
+			"apps_rentuser"."is_deleted" = False AND
+			"apps_animal"."owner_id" = {self.request.user.id}
+			)'''
+		)
 
 
 class CreateAnimalView(generics.CreateAPIView):
