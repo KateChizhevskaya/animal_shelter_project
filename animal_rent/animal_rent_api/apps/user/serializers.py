@@ -54,7 +54,7 @@ class UpdateUserSerializer(ModelSerializer):
 				'You enter incorrect old password'
 			)
 		if new_password:
-			repeated_new_password = attrs.get('r=1epeated_new_password')
+			repeated_new_password = attrs.get('repeated_new_password')
 			if repeated_new_password is None or old_password is None:
 				raise serializers.ValidationError(
 					'You have to provide old password and repeat new one'

@@ -31,7 +31,7 @@ def get_random_string(length):
 
 
 def get_dict_for_update(user):
-	length = random.randint(1, 10)
+	length = random.randint(5, 10)
 	new_phone_number = "+375297603585"
 	new_password = get_random_string(length)
 	old_password = get_random_string(length)
@@ -53,7 +53,8 @@ def test_update_user_ok(user):
 def test_update_only_phone_user_ok(user):
 	correct_dict = get_dict_for_update(user)
 	correct_dict_with_only_phone = {
-		"phone_number": correct_dict['phone_number']
+		"phone_number": correct_dict['phone_number'],
+		"password": correct_dict['password']
 	}
 	response = patch_data(user, 'update_user', data=correct_dict_with_only_phone)
 	assert response.status_code == rest_status.HTTP_200_OK

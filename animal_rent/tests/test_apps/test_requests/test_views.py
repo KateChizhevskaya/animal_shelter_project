@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from django.utils import timezone
 from rest_framework import status as rest_status
@@ -21,7 +23,7 @@ def get_base_rent_request(user):
 	animal = create_animal_with_blocked(user=user)
 	return {
 		"animal": animal.id,
-		"date_time_of_rent_begin": timezone.now(),
+		"date_time_of_rent_begin": timezone.now() + datetime.timedelta(hours=1),
 		"renter_text_comment": "ajncd"
 	}
 
